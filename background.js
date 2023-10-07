@@ -14,6 +14,9 @@ chrome.storage.local.get('myKey', function(result) {
   console.log('저장된 데이터:', result.myKey);
 });
 
+
+
+
 // 이벤트 리스너 추가: content scripts에서 메시지를 기다림
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === 'checkURL') {
@@ -27,11 +30,16 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
           .then(setTimeout(()=> chrome.notifications.clear("phishingbox_noti"), 1500))
           sendResponse({results: result});
       }else{
+        if (urlToCheck.length > 63) {
+          requestBody = JSON.stringify({ url: rooturl });
+        } else {
+          requestBody = JSON.stringify({ url: urlToCheck });
+        }
         console.log("new data")
         // Django 웹 애플리케이션에 데이터 전송
         fetch('https://phishbox.site/api/endpoint', {
           method: 'POST',
-          body: JSON.stringify({url:urlToCheck}),
+          body: requestBody,
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application / json',
@@ -62,4 +70,34 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   };
   return true;
 });
+function blockUrl(url) {
+  //const blockedItemTypes = ["cookies", "javascript", "images", "popups"];
+  const blockedSetting = {
+  primaryPattern: url, // 웹 사이트 URL 패턴
+  setting: 'block', // 팝업 설정 (block, allow, sessionOnly, etc.)
+  scope: 'regular'
+  }
+  chrome.contentSettings.javascript.set(blockedSetting, function() {
+    console.log('ehlo');
+    if (chrome.runtime.lastError) 
+    {
+      console.error(`Error blocking`);
+    } 
+    else 
+    {
+        console.log(`Blocked`);
+    }
+  });
+}
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  if (request.action === 'blockAllItems') {
+    const rooturl = request.rootURL;
 
+    //https://*.youtube.com/*
+    url = "https://"+rooturl + "/*"
+    // url = rooturl + "/*"
+    // console.log(url)
+    blockUrl(url);
+  }
+  return true;
+}); 

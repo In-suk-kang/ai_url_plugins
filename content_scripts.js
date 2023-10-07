@@ -3,7 +3,7 @@
 // 세부 URL을 가져옴
 const detailURL = window.location.href;
 
-function createDraggableCard(backgroundColor, text) {
+function createDraggableCard(backgroundColor, text, buttonText) {
   const cardDiv = document.createElement('div');
   cardDiv.style.position = 'fixed';
   cardDiv.style.top = '20px';
@@ -21,7 +21,19 @@ function createDraggableCard(backgroundColor, text) {
   const cardText = document.createElement('div');
   cardText.textContent = text;
 
+  const blockButton = document.createElement('button');
+  blockButton.textContent = buttonText;
+  blockButton.style.marginTop = '10px'; // 버튼 위쪽 여백 추가
+  blockButton.style.width = '30px';
+  blockButton.style.height = '10px';
+  blockButton.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ action: 'blockAllItems', url: detailURL,rootURL:window.location.host }, function(response) {
+      console.log('blockAllItems 메시지를 보냈습니다.');
+    });
+  });
+
   cardDiv.appendChild(cardText);
+  cardDiv.appendChild(blockButton);
 
   let isDragging = false;
   let offsetX, offsetY;
@@ -52,23 +64,26 @@ function createDraggableCard(backgroundColor, text) {
   return cardDiv;
 }
 
+
+
 (async () => {
   const response = await chrome.runtime.sendMessage({ action: 'checkURL', url: detailURL, rootURL: window.location.host });
-  // do something with response here, not outside the function
   console.log(window.location.host);
   console.log(response);
   switch(response.results){
     case "benign":
-      const allowedDiv = createDraggableCard('green', `Allowed: ${detailURL}`);
+      const allowedDiv = createDraggableCard('green', `Allowed`);
       document.body.appendChild(allowedDiv);
       break;
     case "SERVER ERROR":
-      const errorDiv = createDraggableCard('yellow', `ERROR: ${detailURL}`);
+      const errorDiv = createDraggableCard('yellow', `ERROR`);
       document.body.appendChild(errorDiv);
       break;
     default:
-      const blockedDiv = createDraggableCard('red', `${response.results}: ${detailURL}`);
+      const blockedDiv = createDraggableCard('red', `${response.results}`);
       document.body.appendChild(blockedDiv);
       break;
   }
 })();
+
+
