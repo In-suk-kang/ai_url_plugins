@@ -15,8 +15,6 @@ chrome.storage.local.get('myKey', function(result) {
 });
 
 
-
-
 // 이벤트 리스너 추가: content scripts에서 메시지를 기다림
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === 'checkURL') {
@@ -66,38 +64,40 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     })
       .catch((error) => {sendResponse({results: error.message});});
     // 응답을 보냄
-    setTimeout(() => sendResponse({ shite: "q123" }), 500);
+    setTimeout(() => sendResponse({ results: "SERVER ERROR" }), 500);
   };
   return true;
 });
-function blockUrl(url) {
-  //const blockedItemTypes = ["cookies", "javascript", "images", "popups"];
-  const blockedSetting = {
-  primaryPattern: url, // 웹 사이트 URL 패턴
-  setting: 'block', // 팝업 설정 (block, allow, sessionOnly, etc.)
-  scope: 'regular'
-  }
-  chrome.contentSettings.javascript.set(blockedSetting, function() {
-    console.log('ehlo');
-    if (chrome.runtime.lastError) 
-    {
-      console.error(`Error blocking`);
-    } 
-    else 
-    {
-        console.log(`Blocked`);
-    }
+// URL 차단 또는 해제 함수
+function toggleUrlBlocking(url) {
+  // URL에 대한 JavaScript 설정 상태 가져오기
+  chrome.contentSettings.javascript.get({ primaryUrl: url }, function(details) {
+    const isBlocked = details.setting === 'block';
+    const toggleSetting = isBlocked ? 'allow' : 'block';
+    const setting = {
+      primaryPattern: url,
+      setting: toggleSetting, 
+      scope: 'regular'
+    };
+
+    chrome.contentSettings.javascript.set(setting, function() {
+      if (chrome.runtime.lastError) {
+        console.error(`Error ${toggleSetting === 'block' ? 'blocking' : 'unblocking'}`);
+      } else {
+        console.log(`${toggleSetting === 'block' ? 'Blocked' : 'Unblocked'}`);
+      }
+    });
   });
 }
+
+
+// 메시지 리스너
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === 'blockAllItems') {
-    const rooturl = request.rootURL;
-
-    //https://*.youtube.com/*
-    url = "https://"+rooturl + "/*"
-    // url = rooturl + "/*"
-    // console.log(url)
-    blockUrl(url);
+    const rootURL = request.rootURL;
+    const urlToToggle = "https://" + rootURL + "/*";
+    // URL 차단 또는 해제 함수 호출
+    toggleUrlBlocking(urlToToggle);
   }
   return true;
-}); 
+});
